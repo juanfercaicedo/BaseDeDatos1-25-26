@@ -11,3 +11,313 @@
 9. **Reseñas** del evento por asistentes después de la sesión.
 10. Necesidad de reportes: ocupación por sesión, ingresos por evento, tickets vendidos por tipo.
 
+## 1. Lista definida de requisitos
+
+1. El sistema gestiona **Eventos** con entidad EVENTO que incluye nombre, descripción, lugar y fechas de inicio/fin.
+2. Cada **Evento** puede tener **múltiples Sesiones** mediante relación 1:N, cada sesión con fechas/horas específicas.
+3. En cada **Sesión** se definen **Tipos de Ticket** con entidad TIPO_TICKET que maneja precio y cupo por categoría.
+4. Sistema flexible de asientos con campo `es_numerada` y entidad ASIENTO opcional para sesiones numeradas.
+5. **Clientes** compran **Tickets** únicos con códigos QR y estados dinámicos (reservado→pagado→usado/cancelado).
+6. **Pagos** registran liquidaciones con soporte para múltiples pagos por ticket (cuotas/parciales).
+7. **Promocodes** aplicables a sesiones específicas o tipos de ticket mediante tablas intermedias.
+8. **Reembolsos** totales/parciales con reglas de negocio (plazos, comisiones, estados de aprobación).
+9. **Reseñas** verificadas post-evento con validación de asistencia mediante check-in.
+10. Sistema de **reportes** integral con consultas SQL para ocupación, ingresos y análisis por tipo.
+
+---
+
+## 2. Identificación de Entidades
+
+- **Evento**
+- **Sesion**
+- **TipoTicket**
+- **Ticket**
+- **Cliente**
+- **Asiento**
+- **Promocode**
+- **Pago**
+- **Reembolso**
+- **Resena**
+
+---
+
+## 3. Identificación de Relaciones y Cardinalidades
+
+- Un **Evento (1)** tiene **(1..N) Sesiones**.
+- Una **Sesion (1)** define **(1..N) Tipos de Ticket**.
+- Una **Sesion (1)** vende **(0..N) Tickets**.
+- Un **TipoTicket (1)** clasifica **(0..N) Tickets**.
+- Un **Cliente (1)** posee **(0..N) Tickets**.
+- Una **Sesion (1)** ofrece **(0..N) Asientos** (si es numerada).
+- Un **Asiento (1)** puede estar asignado a **(0..1) Ticket**.
+- Un **Promocode (1)** se aplica a **(0..N) Sesiones**.
+- Un **Promocode (1)** se aplica a **(0..N) Tipos de Ticket**.
+- Un **Ticket (0..N)** puede usar **(0..N) Promocodes** → relación **N:M**.
+- Un **Ticket (1)** se paga con **(1..N) Pagos**.
+- Un **Ticket (1)** puede tener **(0..N) Reembolsos**.
+- Un **Cliente (1)** escribe **(0..N) Reseñas**.
+- Un **Evento (1)** recibe **(0..N) Reseñas**.
+
+---
+
+## 4. Identificación de Atributos
+
+**Evento**
+
+- evento_id
+- nombre
+- descripcion
+- lugar
+- fecha_inicio
+- fecha_fin
+
+**Sesion**
+
+- sesion_id
+- evento_id
+- fecha_hora_inicio
+- fecha_hora_fin
+- capacidad_general
+- estado
+
+**TipoTicket**
+
+- tipo_ticket_id
+- sesion_id
+- nombre_tipo (General, VIP, Early-bird)
+- precio
+- cupo
+- vendidos
+
+**Ticket**
+
+- ticket_id
+- tipo_ticket_id
+- cliente_id
+- asiento_id
+- codigo_unico (QR o de barras)
+- estado (reservado, pagado, cancelado, usado)
+- fecha_compra
+- importe_pagado
+- fecha_checkin
+
+**Cliente**
+
+- cliente_id
+- nombre
+- email
+- telefono
+- fecha_registro
+
+**Asiento**
+
+- asiento_id
+- sesion_id
+- seccion
+- fila
+- numero
+- accesibilidad
+
+**Promocode**
+
+- promocode_id
+- codigo_unico
+- tipo_descuento (porcentaje o monto fijo)
+- valor
+- fecha_inicio
+- fecha_fin
+- limite_uso
+- veces_usado
+- activo
+
+**Pago**
+
+- pago_id
+- ticket_id
+- importe
+- fecha_pago
+- metodo_pago (tarjeta, PayPal, etc.)
+- referencia
+- estado
+
+**Reembolso**
+
+- reembolso_id
+- ticket_id
+- monto
+- fecha_solicitud
+- fecha_aprobacion
+- comision
+- estado (solicitado, aprobado, rechazado, abonado)
+
+**Resena**
+
+- calificacion
+- comentario
+- fecha
+
+---
+
+## 5. Jerarquías / Generalizaciones
+
+- **TICKET** puede implementar especialización según TIPO_TICKET (TicketVIP, TicketGeneral, TicketEarlyBird) con atributos específicos.
+- **CLIENTE** puede generalizarse a USUARIO con roles (Cliente, Organizador, Administrador) para escalabilidad futura.
+- **SESION** tiene composición opcional con ASIENTO solo cuando es_numerada = true.
+- **PROMOCODE** puede especializarse en PromocodeSesion y PromocodeTipoTicket según aplicabilidad.
+
+---
+
+## 6. Diagrama de Chen en Mermaid
+
+```mermaid
+erDiagram
+    EVENTO ||--o{ SESION : "tiene"
+    SESION ||--o{ TIPO_TICKET : "define"
+    SESION ||--o{ ASIENTO : "contiene"
+    TIPO_TICKET ||--o{ TICKET : "clasifica"
+    CLIENTE ||--o{ TICKET : "compra"
+    ASIENTO ||--o| TICKET : "asigna"
+    TICKET ||--o{ PAGO : "se_paga_con"
+    TICKET ||--o{ REEMBOLSO : "puede_tener"
+    CLIENTE ||--o{ RESENA : "escribe"
+    EVENTO ||--o{ RESENA : "recibe"
+    PROMOCODE ||--o{ PROMOCODE_SESION : "aplica_a"
+    SESION ||--o{ PROMOCODE_SESION : "acepta"
+    PROMOCODE ||--o{ PROMOCODE_TIPO_TICKET : "aplica_a"
+    TIPO_TICKET ||--o{ PROMOCODE_TIPO_TICKET : "acepta"
+    TICKET ||--o{ TICKET_PROMOCODE : "usa"
+    PROMOCODE ||--o{ TICKET_PROMOCODE : "usado_en"
+
+    EVENTO {
+        int evento_id PK
+        string nombre
+        text descripcion
+        string lugar
+        date fecha_inicio
+        date fecha_fin
+        datetime created_at
+        datetime updated_at
+    }
+
+    SESION {
+        int sesion_id PK
+        int evento_id FK
+        datetime fecha_hora_inicio
+        datetime fecha_hora_fin
+        boolean es_numerada
+        int capacidad_general
+        string estado
+        datetime created_at
+    }
+
+    TIPO_TICKET {
+        int tipo_ticket_id PK
+        int sesion_id FK
+        string nombre_tipo
+        decimal precio
+        int cupo
+        int vendidos
+        boolean activo
+        datetime created_at
+    }
+
+    TICKET {
+        int ticket_id PK
+        int tipo_ticket_id FK
+        int cliente_id FK
+        int asiento_id FK "nullable"
+        string codigo_unico
+        string estado
+        datetime fecha_compra
+        decimal importe_pagado
+        datetime fecha_checkin "nullable"
+        datetime created_at
+    }
+
+    CLIENTE {
+        int cliente_id PK
+        string nombre
+        string email
+        string telefono
+        datetime fecha_registro
+        boolean activo
+        datetime created_at
+    }
+
+    ASIENTO {
+        int asiento_id PK
+        int sesion_id FK
+        string seccion
+        string fila
+        string numero
+        boolean accesibilidad
+        boolean disponible
+        datetime created_at
+    }
+
+    PROMOCODE {
+        int promocode_id PK
+        string codigo_unico
+        string tipo_descuento
+        decimal valor
+        datetime fecha_inicio
+        datetime fecha_fin
+        int limite_uso
+        int veces_usado
+        boolean activo
+        datetime created_at
+    }
+
+    PAGO {
+        int pago_id PK
+        int ticket_id FK
+        decimal importe
+        datetime fecha_pago
+        string metodo_pago
+        string referencia
+        string estado
+        datetime created_at
+    }
+
+    REEMBOLSO {
+        int reembolso_id PK
+        int ticket_id FK
+        decimal monto
+        text motivo
+        datetime fecha_solicitud
+        datetime fecha_aprobacion "nullable"
+        decimal comision
+        string estado
+        datetime created_at
+    }
+
+    RESENA {
+        int resena_id PK
+        int cliente_id FK
+        int evento_id FK
+        int calificacion
+        text comentario
+        datetime fecha
+        boolean verificado
+        datetime created_at
+    }
+
+    PROMOCODE_SESION {
+        int promocode_id FK
+        int sesion_id FK
+        datetime created_at
+    }
+
+    PROMOCODE_TIPO_TICKET {
+        int promocode_id FK
+        int tipo_ticket_id FK
+        datetime created_at
+    }
+
+    TICKET_PROMOCODE {
+        int ticket_id FK
+        int promocode_id FK
+        decimal descuento_aplicado
+        datetime aplicado_en
+    }
+```
