@@ -1,4 +1,4 @@
-## Plataforma de Eventos y Entradas (Eventos → Sesiones → Tickets)
+# Plataforma de Eventos y Entradas (Eventos → Sesiones → Tickets)
 
 1. El sistema gestiona **Eventos** (con nombre, descripción, lugar, fechas).
 2. Un Evento puede tener **múltiples Sesiones** (fechas/horas distintas en mismo evento).
@@ -10,6 +10,156 @@
 8. Posibilidad de **reembolso parcial** con reglas (plazo para devolución, comisión).
 9. **Reseñas** del evento por asistentes después de la sesión.
 10. Necesidad de reportes: ocupación por sesión, ingresos por evento, tickets vendidos por tipo.
+
+## Identificación de entidades
+
+**Entidad EVENTO**
+
+- id_evento (PK)
+- nombre
+- descripcion
+- lugar
+- fecha_inicio
+- fecha_fin
+
+**Entidad SESION**
+
+- id_sesion (PK)
+- id_evento (FK)
+- fecha
+- hora
+- capacidad (opcional si no numerada)
+
+**Entidad TIPO_TICKET**
+
+- id_tipo_ticket (PK)
+- id_sesion (FK)
+- nombre_tipo (General, VIP, etc.)
+- precio
+- cantidad_max
+
+**Entidad ASIENTO** (solo si numerada)
+
+- id_asiento (PK)
+- id_sesion (FK)
+- fila
+- numero
+- estado (disponible, ocupado)
+
+**Entidad CLIENTE**
+
+- id_cliente (PK)
+- nombre
+- email
+- telefono
+
+**Entidad TICKET**
+
+- id_ticket (PK)
+- id_cliente (FK)
+- id_sesion (FK)
+- id_tipo_ticket (FK)
+- id_asiento (FK, nullable si no numerada)
+- estado (reservado, pagado, cancelado, usado)
+
+**Entidad PAGO**
+
+- id_pago (PK)
+- id_ticket (FK)
+- monto_pagado
+- fecha_pago
+- metodo_pago
+- estado_pago (completado, reembolsado parcial, reembolsado total)
+
+**Entidad REEMBOLSO**
+
+- id_reembolso (PK)
+- id_pago (FK)
+- monto_devuelto
+- fecha_reembolso
+- motivo
+- porcentaje_comision
+
+**Entidad DESCUENTO**
+
+- id_descuento (PK)
+- codigo
+- porcentaje
+- valido_desde
+- valido_hasta
+
+**Entidad CHECKIN**
+
+- id_checkin (PK)
+- id_ticket (FK)
+- fecha_checkin
+- validado_por (usuario del staff)
+
+**Entidad RESEÑA**
+
+- id_resena (PK)
+- id_cliente (FK)
+- id_evento (FK)
+- calificacion
+- comentario
+- fecha_resena
+
+## Identificación de relaciones
+
+### Relación Evento–Sesión
+
+- **Evento → Sesión:** _"Evento tiene sesiones"_ (1:N)
+- **Sesión → Evento:** _"Sesión pertenece a un evento"_ (N:1, pero cada sesión solo a 1 evento)
+
+### Relación Sesión–TipoTicket
+
+- **Sesión → TipoTicket:** _"Sesión ofrece tipos de ticket"_ (1:N)
+- **TipoTicket → Sesión:** _"Tipo de ticket corresponde a una sesión"_ (N:1)
+
+### Relación Sesión–Asiento
+
+- **Sesión → Asiento:** _"Sesión contiene asientos"_ (1:N, opcional si numerada)
+- **Asiento → Sesión:** _"Asiento pertenece a una sesión"_ (N:1)
+
+### Relación Sesión–Ticket
+
+- **Sesión → Ticket:** _"Sesión genera tickets"_ (1:N)
+- **Ticket → Sesión:** _"Ticket corresponde a una sesión"_ (N:1)
+
+### Relación Cliente–Ticket
+
+- **Cliente → Ticket:** _"Cliente compra tickets"_ (1:N)
+- **Ticket → Cliente:** _"Ticket fue comprado por cliente"_ (N:1)
+
+### Relación Ticket–Pago
+
+- **Ticket → Pago:** _"Ticket se paga mediante pago"_ (1:1)
+- **Pago → Ticket:** _"Pago pertenece a un ticket"_ (1:1)
+
+### Relación Pago–Reembolso
+
+- **Pago → Reembolso:** _"Pago genera reembolsos"_ (1:N, pueden existir reembolsos parciales múltiples)
+- **Reembolso → Pago:** _"Reembolso corresponde a un pago"_ (N:1)
+
+### Relación Ticket–Descuento
+
+- **Ticket → Descuento:** _"Ticket usa descuento"_ (N:1, opcional)
+- **Descuento → Ticket:** _"Descuento se aplica a tickets"_ (1:N)
+
+### Relación Ticket–Checkin
+
+- **Ticket → Checkin:** _"Ticket genera check-in"_ (1:1, opcional si el cliente no asistió)
+- **Checkin → Ticket:** _"Check-in valida ticket"_ (1:1)
+
+### Relación Cliente–Reseña
+
+- **Cliente → Reseña:** _"Cliente escribe reseña"_ (1:N)
+- **Reseña → Cliente:** _"Reseña fue escrita por cliente"_ (N:1)
+
+### Relación Evento–Reseña
+
+- **Evento → Reseña:** _"Evento recibe reseñas"_ (1:N)
+- **Reseña → Evento:** _"Reseña corresponde a evento"_ (N:1)
 
 ## 1. Lista definida de requisitos
 
